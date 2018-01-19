@@ -131,19 +131,19 @@ wb_denoise Help:
   if not inputFile.contains(DirSep):
     inputFile = workingDir & inputFile
 
-  if not inputFile.endsWith(".dep"):
+  if not (inputFile.endsWith(".dep") or inputFile.endsWith(".asc")):
     inputFile.add(".dep")
 
   if not outputFile.contains(DirSep):
     outputFile = workingDir & outputFile
 
-  if not outputFile.endsWith(".dep"):
+  if not (outputFile.endsWith(".dep") or outputFile.endsWith(".asc")):
     outputFile.add(".dep")
 
   if not hillshadeFile.contains(DirSep):
     hillshadeFile = workingDir & hillshadeFile
 
-  if not hillshadeFile.endsWith(".dep"):
+  if not (hillshadeFile.endsWith(".dep") or hillshadeFile.endsWith(".asc")):
     hillshadeFile.add(".dep")
 
   if filterSize mod 2 == 0:

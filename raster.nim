@@ -29,8 +29,7 @@ type DataScale = enum
 #   lsbf, msbf
 
 type Raster* = object
-  headerFilename*: string
-  dataFilename*: string
+  filename*: string
   minimum*: float64
   maximum*: float64
   rows*: int
@@ -109,10 +108,16 @@ proc `[]`*(self: Raster, row, column: int): float64  {.inline.} =
 
   result = self.nodata
 
-proc read*(self: var Raster) =
+proc readWhiteboxRaster*(self: var Raster) =
   self.metadata = newSeq[string]()
 
-  var f = open(self.headerFilename)
+  var fn =
+    if self.filename.toLowerAscii.contains(".dep"):
+      self.filename
+    else:
+      self.filename.replace(".tas", ".dep")
+
+  var f = open(fn)
   defer: close(f)
   for line in f.lines:
     # echo line
@@ -187,9 +192,15 @@ proc read*(self: var Raster) =
   # for i in 0..<self.values.len:
   #   self.values[i] = self.nodata
 
-  var fileSize = getFileSize(self.dataFilename)
+  fn =
+    if self.filename.toLowerAscii.contains(".dep"):
+      self.filename.replace(".dep", ".tas")
+    else:
+      self.filename
+
+  var fileSize = getFileSize(fn)
   var buf = newSeq[uint8](fileSize)
-  var df = open(self.dataFilename, fmRead)
+  var df = open(fn, fmRead)
   defer: df.close()
   discard df.readBytes(buf, Natural(0), Natural(fileSize))
 
@@ -221,7 +232,7 @@ proc calculateMinAndMax(self: var Raster) =
       if z > self.maximum:
         self.maximum = z
 
-proc write*(self: var Raster) =
+proc writeWhiteboxRaster*(self: var Raster) =
   try:
     self.calculateMinAndMax()
 
@@ -232,7 +243,13 @@ proc write*(self: var Raster) =
       self.displayMinimum = self.minimum
 
     # write the header file
-    let o = open(self.headerFilename, fmWrite)
+    var fn =
+      if self.filename.toLowerAscii.contains(".dep"):
+        self.filename
+      else:
+        self.filename.replace(".tas", ".dep")
+
+    let o = open(fn, fmWrite)
     defer: o.close
     o.writeLine(self)
 
@@ -248,8 +265,14 @@ proc write*(self: var Raster) =
         1
 
     var fileSize = dataSize * self.rows * self.columns
-    # var buf = newSeq[uint8](fileSize)
-    var df = open(self.dataFilename, fmWrite)
+
+    fn =
+      if self.filename.toLowerAscii.contains(".dep"):
+        self.filename.replace(".dep", ".tas")
+      else:
+        self.filename
+
+    var df = open(fn, fmWrite)
     defer: df.close()
 
     var bow: ByteOrderWriter = newByteOrderWriter(fileSize, self.byteOrder)
@@ -284,14 +307,139 @@ proc write*(self: var Raster) =
   except:
     echo "Got exception ", repr(getCurrentException()), " with message ", getCurrentExceptionMsg()
 
-proc newRasterFromFile*(fileName: string): Raster =
-  # var result = Raster()
-  if fileName.toLowerAscii().endsWith(".dep"):
-    result.headerFilename = fileName
-    result.dataFilename = fileName.replace(".dep", ".tas")
-  elif fileName.toLowerAscii().endsWith(".tas"):
-    result.headerFilename = fileName.replace(".tas", ".dep")
-    result.dataFilename = fileName
+proc readArcAscii(self: var Raster) =
+  try:
+    # read the file
+    var f = open(self.filename)
+    defer: close(f)
+
+    var xllcenter: float64 = NegInf
+    var yllcenter: float64 = NegInf
+    var xllcorner: float64 = NegInf
+    var yllcorner: float64 = NegInf
+
+    var index = 0
+    for line in f.lines:
+      var lineSplit = line.strip.split(" ")
+      if lineSplit.len() == 1:
+        lineSplit = line.strip.split("\t")
+
+      let lastIndex = len(lineSplit) - 1
+      if lineSplit[0].toLowerAscii().contains("nrows"):
+        self.rows = parseInt(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("ncols"):
+        self.columns = parseInt(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("xllcorner"):
+        xllcenter = parseFloat(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("yllcorner"):
+        yllcenter = parseFloat(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("xllcenter"):
+        xllcorner = parseFloat(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("yllcenter"):
+        yllcorner = parseFloat(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("cellsize"):
+        self.resolutionX = parseFloat(lineSplit[lastIndex].strip)
+        self.resolutionY = parseFloat(lineSplit[lastIndex].strip)
+      elif lineSplit[0].toLowerAscii().contains("nodata_value"):
+        if lineSplit[lastIndex].contains("."):
+          self.dataType = DataType.f32
+        else:
+          self.dataType = DataType.i32
+
+        self.nodata = parseFloat(lineSplit[lastIndex].strip)
+      else: # it's a data line
+        if self.values == nil:
+          self.values = newSeq[float64](self.rows * self.columns)
+
+        for val in lineSplit:
+          if not val.isNilOrWhitespace():
+            self.values[index] = parseFloat(val.strip)
+            index += 1
+
+    # set the North, East, South, and West coodinates
+    if xllcorner.classify != fcNegInf:
+      self.east = xllcorner + float64(self.columns)*self.resolutionX
+      self.west = xllcorner
+      self.south = yllcorner
+      self.north = yllcorner + float64(self.rows)*self.resolutionY
+    else:
+      self.east = xllcenter - (0.5 * self.resolutionX) + float64(self.columns)*self.resolutionX
+      self.west = xllcenter - (0.5 * self.resolutionX)
+      self.south = yllcenter - (0.5 * self.resolutionY)
+      self.north = yllcenter - (0.5 * self.resolutionY) + float64(self.rows)*self.resolutionY
+
+    # initialize the other unused raster parameters
+    self.palette = "default"
+    self.paletteNonlinearity = 1'f64
+    self.projection = "not specified"
+    self.zUnits = "not specified"
+    self.xyUnits = "not specified"
+    self.byteOrder = Endianness.littleEndian
+
+    # the data will be unique to the new raster
+    self.minimum = Inf
+    self.maximum = NegInf
+    self.displayMinimum = Inf
+    self.displayMaximum = NegInf
+
+  except:
+    echo "Got exception ", repr(getCurrentException()), " with message ", getCurrentExceptionMsg()
+
+proc writeArcAscii(self: var Raster) =
+  try:
+    # Save the file
+    let o = open(self.filename, fmWrite)
+    defer: o.close
+
+    o.writeLine("NCOLS $1".format(self.columns))
+    o.writeLine("NROWS $1".format(self.rows))
+    o.writeLine("XLLCORNER $1".format(self.west))
+    o.writeLine("YLLCORNER $1".format(self.south))
+    o.writeLine("CELLSIZE $1".format((self.resolutionX + self.resolutionY) / 2'f64))
+    o.writeLine("NODATA_VALUE $1".format(self.nodata))
+
+    # write the data
+    let numCells = self.rows * self.columns
+    var col = 0
+    var s = ""
+    for i in 0..numCells-1:
+      if col < self.columns - 1:
+        s.add("$1 ".format(self.values[i].formatFloat(ffDecimal, 2)))
+      else:
+        s.add("$1".format(self.values[i].formatFloat(ffDecimal, 2)))
+
+      col += 1
+      if col == self.columns:
+        o.writeLine(s)
+        s = ""
+        col = 0
+
+  except:
+    echo "Got exception ", repr(getCurrentException()), " with message ", getCurrentExceptionMsg()
+
+proc read*(self: var Raster) =
+  if self.filename.toLowerAscii.endsWith(".dep") or self.filename.toLowerAscii.endsWith(".tas"):
+    self.readWhiteboxRaster()
+  elif self.filename.toLowerAscii.endsWith(".asc") or self.filename.toLowerAscii.endsWith(".txt"):
+    self.readArcAscii()
+  else:
+    raise newException(FileIOError, "Unrecognized raster file type")
+
+proc write*(self: var Raster) =
+  if self.filename.toLowerAscii.endsWith(".dep") or self.filename.toLowerAscii.endsWith(".tas"):
+    self.writeWhiteboxRaster()
+  elif self.filename.toLowerAscii.endsWith(".asc") or self.filename.toLowerAscii.endsWith(".txt"):
+    self.writeArcAscii()
+  else:
+    raise newException(FileIOError, "Unrecognized raster file type")
+
+
+proc newRasterFromFile*(filename: string): Raster =
+  # make sure it is a supported file format
+  if filename.toLowerAscii().endsWith(".dep") or filename.toLowerAscii().endsWith(".tas"):
+    result.filename = filename
+  elif filename.toLowerAscii().endsWith(".asc"):
+    result.filename = filename
   else:
     raise newException(FileIOError, "Unrecognized file extension")
 
@@ -302,12 +450,12 @@ proc createFromOther*(filename: string,
                     dataType = DataType.none,
                     nodata=NegInf,
                     copyData=false): Raster =
-  if fileName.toLowerAscii().endsWith(".dep"):
-    result.headerFilename = fileName
-    result.dataFilename = fileName.replace(".dep", ".tas")
-  elif fileName.toLowerAscii().endsWith(".tas"):
-    result.headerFilename = fileName.replace(".tas", ".dep")
-    result.dataFilename = fileName
+
+  # make sure it is a supported file format
+  if filename.toLowerAscii().endsWith(".dep") or filename.toLowerAscii().endsWith(".tas"):
+    result.filename = filename
+  elif fileName.toLowerAscii().endsWith(".asc"):
+    result.filename = filename
   else:
     raise newException(FileIOError, "Unrecognized file extension")
 
