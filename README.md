@@ -1,10 +1,10 @@
-wb_denoise
+fp_denoise
 ==========
 
 Description
 -----------
 
-This repository contains code that implements Sun's 2007 (*Fast and Effective Feature-Preserving Mesh Denoising*) [de-noising algorithm](https://github.com/exuberant/mdenoise), intented for application with raster digital elevation models (DEMs). The algorithm has been implemented using the [Nim programming language](https://nim-lang.org). The implementation has been modified in the following ways:
+*fp_denois* is a command-line program for performing feature-preserving de-noising,i ntented for application with raster digital elevation models (DEMs). It is an implementation of Sun's 2007 (*Fast and Effective Feature-Preserving Mesh Denoising*) [de-noising algorithm](https://github.com/exuberant/mdenoise). The algorithm has been developed using the [Nim programming language](https://nim-lang.org). The implementation has been modified in the following ways:
 
 - The algorithm assumes that the underlying data structure is a raster rather than a TIN.
 - Normal vectors are calculated planes fit to the 3x3 neighbourhood surrounding each grid cell rather than triangular facets.
@@ -21,7 +21,7 @@ Installing
 After downloading the source code in the repository and installing the [Nim compiler](https://nim-lang.org/install.html) on your computer, open a terminal (command prompt), change the working directory to the folder containing the source code and type the following:
 
 ```
->> nim c -d:release wb_denoise.nim
+>> nim c -d:release fp_denoise.nim
 ```
 
 Usage
@@ -42,7 +42,7 @@ Usage
 Example usage at command line prompt (>>):
 
 ```
->> ./wb_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --threshold=20.0 --filter=5 --iterations=8 --hillshade=hs.dep
+>> ./fp_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --threshold=20.0 --filter=5 --iterations=8 --hillshade=hs.dep
 ```
 Here is a sample of the effect of running the tool on a fine-resolution LiDAR DEM:
 

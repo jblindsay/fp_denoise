@@ -79,7 +79,7 @@ when isMainModule:
           simpleMeanFilter = true
         elif arg.toLowerAscii.contains("-h"):
           echo """
-wb_denoise:
+fp_denoise:
 This tool performs feature-preserving de-noising on a raster digital elevation model (DEM).
 
 Usage:
