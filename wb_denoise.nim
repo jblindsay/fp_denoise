@@ -182,6 +182,9 @@ wb_denoise Help:
     dx = [1, 1, 1, 0, -1, -1, -1, 0]
     dy = [-1, 0, 1, 1, 1, 0, -1, -1]
     eightGridRes = dem.resolutionX * 8'f64
+    x = [-dem.resolutionX, -dem.resolutionX, -dem.resolutionX, 0'f64, dem.resolutionX, dem.resolutionX, dem.resolutionX, 0'f64]
+    y = [-dem.resolutionY, 0'f64, dem.resolutionY, dem.resolutionY, dem.resolutionY, 0'f64, -dem.resolutionY, -dem.resolutionY]
+    midPoint = int(float(filterSize) / 2.0)
     # intercellBreakSlope = degToRad(60'f64)
     # maxZDiffEW = intercellBreakSlope.tan() * dem.resolutionX
     # maxZDiffNS = intercellBreakSlope.tan() * dem.resolutionY
@@ -197,9 +200,23 @@ wb_denoise Help:
     a, b, c: float64
     progress: int
     oldProgress: int = 1
+    dx2 = newSeq[int]()
+    dy2 = newSeq[int]()
+    numNeighbours = filterSize * filterSize
+    sumW: float64
+    w: float64
+    diff: float64
     zeroVector = Vector3(a: 0'f64, b: 0'f64, c: 0'f64)
     nv: Array2D[Vector3] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector) # normal vectors
     nvSmooth: Array2D[Vector3] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector)
+
+  # Note that this is used to figure out the column (dx2) and
+  # row (dy2) offsets for the filter that is used for smoothing,
+  # relative to the convolution filter's mid-point cell.
+  for r in 0..<filterSize:
+    for c in 0..<filterSize:
+      dx2.add(c - mid_point)
+      dy2.add(r - mid_point)
 
   echo "Calculating normal vectors..."
   for row in 0..<dem.rows:
@@ -237,23 +254,6 @@ wb_denoise Help:
     ##################################
     # smooth the normal vector field #
     ##################################
-    let midPoint = int(float(filterSize) / 2.0)
-    var dx2 = newSeq[int]()
-    var dy2 = newSeq[int]()
-    # Note that this is used to figure out the column (dx2) and
-    # row (dy2) offsets for the filter that is used for smoothing,
-    # relative to the convolution filter's mid-point cell.
-    for r in 0..<filterSize:
-      for c in 0..<filterSize:
-        dx2.add(c - mid_point)
-        dy2.add(r - mid_point)
-
-    var
-      numNeighbours = len(dx2)
-      sumW: float64
-      w: float64
-      diff: float64
-
     echo ""
     echo "Smoothing the normal vectors..."
     for row in 0..<dem.rows:
@@ -293,10 +293,6 @@ wb_denoise Help:
     # Update the elevations of the DEM based on the smoothed normal vectors #
     #########################################################################
     echo "Updating elevations..."
-    let
-      x = [-dem.resolutionX, -dem.resolutionX, -dem.resolutionX, 0'f64, dem.resolutionX, dem.resolutionX, dem.resolutionX, 0'f64]
-      y = [-dem.resolutionY, 0'f64, dem.resolutionY, dem.resolutionY, dem.resolutionY, 0'f64, -dem.resolutionY, -dem.resolutionY]
-
     for i in 1..iterations:
       echo "Iteration $1 of $2...".format(i, iterations)
 
@@ -345,22 +341,6 @@ wb_denoise Help:
     ##################################
     # smooth the normal vector field #
     ##################################
-    let midPoint = int(float(filterSize) / 2.0)
-    var dx2 = newSeq[int]()
-    var dy2 = newSeq[int]()
-    # Note that this is used to figure out the column (dx2) and
-    # row (dy2) offsets for the filter that is used for smoothing,
-    # relative to the convolution filter's mid-point cell.
-    for r in 0..<filterSize:
-      for c in 0..<filterSize:
-        dx2.add(c - mid_point)
-        dy2.add(r - mid_point)
-
-    var
-      numNeighbours = len(dx2)
-      sumW: float64
-      diff: float64
-
     echo ""
     echo "Smoothing the normal vectors..."
     for row in 0..<dem.rows:
@@ -399,9 +379,6 @@ wb_denoise Help:
     # Update the elevations of the DEM based on the smoothed normal vectors #
     #########################################################################
     echo "Updating elevations..."
-    let
-      x = [-dem.resolutionX, -dem.resolutionX, -dem.resolutionX, 0'f64, dem.resolutionX, dem.resolutionX, dem.resolutionX, 0'f64]
-      y = [-dem.resolutionY, 0'f64, dem.resolutionY, dem.resolutionY, dem.resolutionY, 0'f64, -dem.resolutionY, -dem.resolutionY]
 
     for i in 1..iterations:
       echo "Iteration $1 of $2...".format(i, iterations)
