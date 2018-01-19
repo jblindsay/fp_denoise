@@ -125,6 +125,7 @@ wb_denoise Help:
   let t0 = cpuTime()
 
   # Make sure that the input and output file names are fully qualified
+  # and perform quality assurance on the input variables.
   if not workingDir.endsWith(DirSep):
     workingDir.add(DirSep)
 
@@ -167,6 +168,8 @@ wb_denoise Help:
     iterations = 50
     echo "Warning: Iterations must be between 1 and 50."
 
+
+  # Read the input files
   echo("Reading DEM data...")
   let dem = newRasterFromFile(inputFile)
 
@@ -174,16 +177,18 @@ wb_denoise Help:
 
   let t1 = cpuTime()
 
-  ################################
-  # Calculate the normal vectors #
-  ################################
-
+  ##########################
+  # Declare some variables #
+  ##########################
   let
+    # dx and dy are used as offsets for 3x3 neighbourhood scans
     dx = [1, 1, 1, 0, -1, -1, -1, 0]
     dy = [-1, 0, 1, 1, 1, 0, -1, -1]
     eightGridRes = dem.resolutionX * 8'f64
+    # x and y are used in the estimates of elevation during the update process
     x = [-dem.resolutionX, -dem.resolutionX, -dem.resolutionX, 0'f64, dem.resolutionX, dem.resolutionX, dem.resolutionX, 0'f64]
     y = [-dem.resolutionY, 0'f64, dem.resolutionY, dem.resolutionY, dem.resolutionY, 0'f64, -dem.resolutionY, -dem.resolutionY]
+    # midPoint is used to create the smoothing convolution kernel
     midPoint = int(float(filterSize) / 2.0)
     # intercellBreakSlope = degToRad(60'f64)
     # maxZDiffEW = intercellBreakSlope.tan() * dem.resolutionX
@@ -218,6 +223,10 @@ wb_denoise Help:
       dx2.add(c - mid_point)
       dy2.add(r - mid_point)
 
+
+  ################################
+  # Calculate the normal vectors #
+  ################################
   echo "Calculating normal vectors..."
   for row in 0..<dem.rows:
     for col in 0..<dem.columns:
@@ -316,22 +325,6 @@ wb_denoise Help:
             if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
               output[row, col] = z / sumW
 
-    let t2 = cpuTime()
-
-    ####################
-    # Save the new DEM #
-    ####################
-    echo("Saving data...")
-    output.metadata.add("Created bye the wb_denoise tool")
-    output.metadata.add("Filter Size: $1".format(filterSize))
-    output.metadata.add("Threshold: $1".format(threshold))
-    output.metadata.add("Iterations: $1".format(iterations))
-    output.write()
-
-    let t3 = cpuTime()
-    echo "Elapsed times (without i/o): ", (t2 - t1).formatFloat(ffDecimal, 2), "s"
-    echo "Elapsed times (with i/o): ", (t3 - t0).formatFloat(ffDecimal, 2), "s"
-
   else:
     # The following version of normal vector smoothing and elevation updates
     # uses a simple mean filter for all neighbours with differences in normal
@@ -402,21 +395,22 @@ wb_denoise Help:
             if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
               output[row, col] = z / sumW
 
-    let t2 = cpuTime()
 
-    ####################
-    # Save the new DEM #
-    ####################
-    echo("Saving data...")
-    output.metadata.add("Created bye the wb_denoise tool")
-    output.metadata.add("Filter Size: $1".format(filterSize))
-    output.metadata.add("Threshold: $1".format(threshold))
-    output.metadata.add("Iterations: $1".format(iterations))
-    output.write()
+  let t2 = cpuTime()
 
-    let t3 = cpuTime()
-    echo "Elapsed times (without i/o): ", (t2 - t1).formatFloat(ffDecimal, 2), "s"
-    echo "Elapsed times (with i/o): ", (t3 - t0).formatFloat(ffDecimal, 2), "s"
+  ####################
+  # Save the new DEM #
+  ####################
+  echo("Saving data...")
+  output.metadata.add("Created bye the wb_denoise tool")
+  output.metadata.add("Filter Size: $1".format(filterSize))
+  output.metadata.add("Threshold: $1".format(threshold))
+  output.metadata.add("Iterations: $1".format(iterations))
+  output.write()
+
+  let t3 = cpuTime()
+  echo "Elapsed times (without i/o): ", (t2 - t1).formatFloat(ffDecimal, 2), "s"
+  echo "Elapsed times (with i/o): ", (t3 - t0).formatFloat(ffDecimal, 2), "s"
 
   if createHillshade:
     ################################################
