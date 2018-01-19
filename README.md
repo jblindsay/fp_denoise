@@ -46,9 +46,9 @@ Example usage at command line (>>):
 ```
 Here is a sample of the effect of running the tool on a fine-resolution LiDAR DEM:
 
-![Original unfiltered LiDAR DEM][./img/rawDEM.png]
+![Original unfiltered LiDAR DEM](./img/rawDEM.png)
 
-![De-noised LiDAR DEM][./img/denoisedDEM.png]
+![De-noised LiDAR DEM](./img/denoisedDEM.png)
 
 The above image is the hillshade image derived from the de-noised DEM using a threshold of 20-degrees (--), a 13 grid cell filter size, and 5 iterations of elevation updating.
 
