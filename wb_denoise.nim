@@ -1,21 +1,15 @@
 #[
 Author: Dr. John Lindsay
 Created: January 18, 2018
-Last Modified: January 18, 2018
+Last Modified: January 19, 2018
 License: MIT
 ]#
 
 import system, strutils, endians, os, math, ospaths, times
-import raster
-import array_2d
+import raster, array_2d
 
 type Vector3 = object
   a, b, c: float64
-
-proc `+=`*(self, other: var Vector3) {.inline.} =
-  self.a += other.a
-  self.b += other.b
-  self.c += other.c
 
 proc angleBetween(self, other: Vector3): float64 {.inline.} =
   let numerator = self.a * other.a + self.b * other.b + self.c * other.c
@@ -85,7 +79,10 @@ when isMainModule:
           simpleMeanFilter = true
         elif arg.toLowerAscii.contains("-h"):
           echo """
-wb_denoise Help:
+wb_denoise:
+This tool performs feature-preserving de-noising on a raster digital elevation model (DEM).
+
+Usage:
 --wd          Working directory; appended to input/output file names
 -i, --input   Input DEM file name
 -o, --output  Output DEM file name
@@ -100,6 +97,7 @@ wb_denoise Help:
 
   else:
     # No arguments have been supplied, so ask the user for input.
+    # That is, proceed as an interactive command line program.
     stdout.write("Working directory: ")
     workingDir = readLine(stdin)
 

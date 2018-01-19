@@ -1,8 +1,10 @@
 #[
 Author: Dr. John Lindsay
 Created: January 18, 2018
-Last Modified: January 18, 2018
+Last Modified: January 19, 2018
 License: MIT
+
+Notes: Module for reading and writing Whitebox and ArcGIS ASCII raster formats.
 ]#
 
 import byte_order_reader, byte_order_writer, strutils

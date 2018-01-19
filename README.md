@@ -6,12 +6,12 @@ Description
 
 This repository contains code that implements Sun's 2007 (*Fast and Effective Feature-Preserving Mesh Denoising*) [de-noising algorithm](https://github.com/exuberant/mdenoise), intented for application with raster digital elevation models (DEMs). The algorithm has been implemented using the [Nim programming language](https://nim-lang.org). The implementation has been modified in the following ways:
 
-1. The algorithm assumes that the underlying data structure is a raster rather than a TIN.
-2. Normal vectors are calculated planes fit to the 3x3 neighbourhood surrounding each grid cell rather than triangular facets.
-3. The normal vector field is smoothed using a convolution filter rather than iteration.
-4. The user inputs the normal vector deviation angle threshold in degrees rather than a cosine angle.
-5. The method for updating elevations differs from Sun's method.
-6. The user may optional specify a weighting scheme for normal vector smoothing that uses either Sun's original method (ni . nj - T) or a simple thresholded mean filter (i.e. all neighbouring grid cells with normal vectors that deviate from the centre cell by less than the threshold are given equal weighting). This both increases the efficiency and the degree of smoothing.
+- The algorithm assumes that the underlying data structure is a raster rather than a TIN.
+- Normal vectors are calculated planes fit to the 3x3 neighbourhood surrounding each grid cell rather than triangular facets.
+- The normal vector field is smoothed using a convolution filter rather than iteration.
+- The user inputs the normal vector deviation angle threshold in degrees rather than a cosine angle.
+- The method for updating elevations differs from Sun's method.
+- The user may optional specify a weighting scheme for normal vector smoothing that uses either Sun's original method (ni . nj - T) or a simple thresholded mean filter (i.e. all neighbouring grid cells with normal vectors that deviate from the centre cell by less than the threshold are given equal weighting). This both increases the efficiency and the degree of smoothing.
 
 These modifications generally result in more efficient denoising. The algorithm has been demonstrated to work well with fine-resolution LiDAR data. Note that the input DEM should be in a projected coordinate system (e.g. UTM) and in a [Whitebox GAT](http://www.uoguelph.ca/~hydrogeo/Whitebox/) or ArcGIS ASCII raster format.
 
@@ -39,7 +39,7 @@ Usage
 | -m           |  If this flag is present, a simple mean filter is used   |
 | -h           |  Help                                                    |
 
-Example usage at command line (>>):
+Example usage at command line prompt (>>):
 
 ```
 >> ./wb_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --threshold=20.0 --filter=5 --iterations=8 --hillshade=hs.dep
