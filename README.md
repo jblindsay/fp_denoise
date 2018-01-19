@@ -18,7 +18,7 @@ These modifications generally result in more efficient denoising. The algorithm 
 Installing
 ----------
 
-After installing the [Nim compiler](https://nim-lang.org/install.html) on your computer, open a terminal (command prompt), change the working directory to the folder containing the source code and type the following:
+After downloading the source code in the repository and installing the [Nim compiler](https://nim-lang.org/install.html) on your computer, open a terminal (command prompt), change the working directory to the folder containing the source code and type the following:
 
 ```
 >> nim c -d:release wb_denoise.nim
@@ -42,8 +42,15 @@ Usage
 Example usage at command line (>>):
 
 ```
->> ./wb_denoise -wd="/path/to/data/" -i="DEM file.dep" -o=output.dep -threshold=20.0 -filter=5 -iterations=8 -hillshade=hs.dep
+>> ./wb_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --threshold=20.0 --filter=5 --iterations=8 --hillshade=hs.dep
 ```
+Here is a sample of the effect of running the tool on a fine-resolution LiDAR DEM:
+
+![Original unfiltered LiDAR DEM][./img/rawDEM.png]
+
+![De-noised LiDAR DEM][./img/denoisedDEM.png]
+
+The above image is the hillshade image derived from the de-noised DEM using a threshold of 20-degrees (--), a 13 grid cell filter size, and 5 iterations of elevation updating.
 
 Licence
 -------

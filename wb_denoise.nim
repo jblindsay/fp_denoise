@@ -442,9 +442,9 @@ wb_denoise Help:
     echo "Elapsed times (with i/o): ", (t3 - t0).formatFloat(ffDecimal, 2), "s"
 
   if createHillshade:
-    ################################################################
-    # Output the smoothed normal vector field as a hillshade image #
-    ################################################################
+    ################################################
+    # Output the a hillshade (shaded relief) image #
+    ################################################
     var
       hillshadeRaster = createFromOther(hillshadeFile, dem)
       aspect, tanSlope, hillshade: float64
