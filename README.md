@@ -4,7 +4,7 @@ fp_denoise
 Description
 -----------
 
-*fp_denois* is a command-line program for performing feature-preserving de-noising,i ntented for application with raster digital elevation models (DEMs). It is an implementation of Sun's 2007 (*Fast and Effective Feature-Preserving Mesh Denoising*) [de-noising algorithm](https://github.com/exuberant/mdenoise). The algorithm has been developed using the [Nim programming language](https://nim-lang.org). The implementation has been modified in the following ways:
+*fp_denoise* is a command-line program for performing feature-preserving de-noising, intented for application with raster digital elevation models (DEMs). It is an implementation of Sun's 2007 (*Fast and Effective Feature-Preserving Mesh Denoising*) [de-noising algorithm](https://github.com/exuberant/mdenoise). The algorithm has been developed using the [Nim programming language](https://nim-lang.org). The implementation has been modified in the following ways:
 
 - The algorithm assumes that the underlying data structure is a raster rather than a TIN.
 - Normal vectors are calculated planes fit to the 3x3 neighbourhood surrounding each grid cell rather than triangular facets.
