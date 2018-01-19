@@ -27,7 +27,6 @@ After installing the [Nim compiler](https://nim-lang.org/install.html) on your c
 Usage
 -----
 
-|--------------|----------------------------------------------------------|
 | flag         | Description                                              |
 |--------------|----------------------------------------------------------|
 | --wd         |  Working directory; appended to input/output file names  |
@@ -39,12 +38,12 @@ Usage
 | --hillshade  |  Optional output hillshade image file name               |
 | -m           |  If this flag is present, a simple mean filter is used   |
 | -h           |  Help                                                    |
-|--------------|----------------------------------------------------------|
 
-Example usage:
+Example usage at command line (>>):
 
 ```
 >> ./wb_denoise -wd="/path/to/data/" -i="DEM file.dep" -o=output.dep -threshold=20.0 -filter=5 -iterations=8 -hillshade=tmp17.dep
+```
 
 Licence
 -------
