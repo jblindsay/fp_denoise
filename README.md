@@ -50,6 +50,10 @@ Here is a sample of the effect of running the tool on a fine-resolution LiDAR DE
 
 ![De-noised LiDAR DEM](./img/denoisedDEM.png)
 
+![Detailed original unfiltered LiDAR DEM](./img/detailedRaw.png)
+
+![Detailed de-noised LiDAR DEM](./img/detailedDenoised.png)
+
 The above image is the hillshade image derived from the de-noised DEM using a threshold of 20-degrees (--), a 13 grid cell filter size, and 5 iterations of elevation updating.
 
 Licence
