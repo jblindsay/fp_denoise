@@ -400,7 +400,7 @@ Usage:
   # Save the new DEM #
   ####################
   echo("Saving data...")
-  output.metadata.add("Created bye the wb_denoise tool")
+  output.metadata.add("Created by the fp_denoise tool")
   output.metadata.add("Filter Size: $1".format(filterSize))
   output.metadata.add("Threshold: $1".format(threshold))
   output.metadata.add("Iterations: $1".format(iterations))
@@ -424,7 +424,7 @@ Usage:
 
     let
       azimuth = (315'f64 - 90'f64).degToRad()
-      altitude = 25'f64.degToRad()
+      altitude = 30'f64.degToRad()
       sinTheta = altitude.sin()
       cosTheta = altitude.cos()
 
@@ -468,7 +468,7 @@ Usage:
         oldProgress = progress
 
     hillshadeRaster.palette = "grey.pal"
-    hillshadeRaster.metadata.add("Created bye the wb_denoise tool")
+    hillshadeRaster.metadata.add("Created by the fp_denoise tool")
     hillshadeRaster.metadata.add("Filter Size: $1".format(filterSize))
     hillshadeRaster.metadata.add("Threshold: $1".format(threshold))
     hillshadeRaster.metadata.add("Iterations: $1".format(iterations))

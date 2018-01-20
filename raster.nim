@@ -92,7 +92,7 @@ proc `$`*(self: Raster): string =
     result.add("Byte Order:\tLITTLE_ENDIAN\n")
   else:
     result.add("Byte Order:\tBIG_ENDIAN\n")
-  result.add("Palette Nonlinearity:\t$1\n".format(self.palette))
+  result.add("Palette Nonlinearity:\t$1\n".format(self.paletteNonlinearity))
   for v in self.metadata:
     result.add("Metadata Entry:\t$1\n".format(v.replace(":", ";")))
 
