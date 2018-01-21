@@ -1,7 +1,7 @@
 #[
 Author: Dr. John Lindsay
 Created: January 18, 2018
-Last Modified: January 19, 2018
+Last Modified: January 21, 2018
 License: MIT
 
 Notes: Module for reading and writing Whitebox and ArcGIS ASCII raster formats.
@@ -98,17 +98,12 @@ proc `$`*(self: Raster): string =
 
 proc `[]=`*(self: var Raster, row, column: int, value: float64) {.inline.} =
   if row >= 0 and row < self.rows and column >= 0 and column < self.columns:
-    let index = row * self.columns + column
-    if index >= 0 and index < len(self.values):
-        self.values[index] = value
+    self.values[row * self.columns + column] = value
 
 proc `[]`*(self: Raster, row, column: int): float64  {.inline.} =
-  if row >= 0 and row < self.rows and column >= 0 and column < self.columns:
-    let index = row * self.columns + column
-    if index >= 0 and index < len(self.values):
-      return self.values[index]
-
-  result = self.nodata
+  if row < 0 or column < 0: return self.nodata
+  if row >= self.rows or column >= self.columns: return self.nodata
+  result = self.values[row * self.columns + column]
 
 proc readWhiteboxRaster*(self: var Raster) =
   self.metadata = newSeq[string]()
