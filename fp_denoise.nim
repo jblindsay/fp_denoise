@@ -8,22 +8,19 @@ License: MIT
 import system, strutils, endians, os, math, ospaths, times
 import raster, array_2d
 
-type Vector3 = object
+type Normal = object
   a, b, c: float64
 
-proc angleBetween(self, other: Vector3): float64 {.inline.} =
-  let numerator = self.a * other.a + self.b * other.b + self.c * other.c
+proc angleBetween(self, other: Normal): float64 {.inline.} =
+  # Note that this is actually not the angle between the vectors but
+  # rather the cosine of the angle between the vectors. This improves
+  # the performance considerably. Also note that we do not need to worry
+  # about checking for division by zero here because 'c' will always be 
+  # non-zero and therefore the vector magnitude cannot be zero.
   let denom = ((self.a * self.a + self.b * self.b + self.c * self.c) *
               (other.a * other.a + other.b * other.b + other.c * other.c)).sqrt()
-  if denom != 0'f64:
-    # Note that this is actually not the angle between the vectors but
-    # rather the cosine of the angle between the vectors. This improves
-    # the performance considerably.
-    return numerator / denom # min((numerator / denom), 1.0'f64)
-
-  result = NegInf # if denom is zero
-
-
+  result = (self.a * other.a + self.b * other.b + self.c * other.c) / denom 
+  
 when isMainModule:
   var
     workingDir = ""
@@ -209,9 +206,9 @@ Usage:
     sumW: float64
     w: float64
     diff: float64
-    zeroVector = Vector3(a: 0'f64, b: 0'f64, c: 0'f64)
-    nv: Array2D[Vector3] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector) # normal vectors
-    nvSmooth: Array2D[Vector3] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector)
+    zeroVector = Normal(a: 0'f64, b: 0'f64, c: 0'f64)
+    nv: Array2D[Normal] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector) # normal vectors
+    nvSmooth: Array2D[Normal] = newArray2D(dem.rows, dem.columns, zeroVector, zeroVector)
 
   # Note that this is used to figure out the column (dx2) and
   # row (dy2) offsets for the filter that is used for smoothing,
@@ -231,9 +228,7 @@ Usage:
       z = dem[row, col]
       if z != dem.nodata:
         for n in 0..7:
-          xn = col + dx[n]
-          yn = row + dy[n]
-          zn = dem[yn, xn]
+          zn = dem[row + dy[n], col + dx[n]]
           if zn != dem.nodata:
             # if (zn - z).abs() > maxZDiff[n]:
             #     # This indicates a very steep inter-cell slope.
@@ -246,14 +241,14 @@ Usage:
 
         a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
         b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
-        nv[row, col] = Vector3(a: a, b: b, c: eightGridRes)
-
+        nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
+        
     progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
     if progress != oldProgress:
       stdout.write("\rProgress: $1%".format(progress))
       stdout.flushFile()
       oldProgress = progress
-
+      
   if not simpleMeanFilter:
     # The following version of normal vector smoothing and elevation updates
     # uses Sun's original weighting scheme of (ni . nj - threshold)^2
@@ -286,7 +281,7 @@ Usage:
           a /= sumW
           b /= sumW
           c /= sumW
-          nvSmooth[row, col] = Vector3(a: a, b: b, c: c)
+          nvSmooth[row, col] = Normal(a: a, b: b, c: c)
 
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
@@ -319,7 +314,7 @@ Usage:
                   w = (diff - threshold)*(diff - threshold)
                   sumW += w
                   z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
-
+                  
             if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
               output[row, col] = z / sumW
 
@@ -356,7 +351,7 @@ Usage:
           a /= sumW
           b /= sumW
           c /= sumW
-          nvSmooth[row, col] = Vector3(a: a, b: b, c: c)
+          nvSmooth[row, col] = Normal(a: a, b: b, c: c)
 
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
@@ -389,7 +384,7 @@ Usage:
                 if diff > threshold:
                   sumW += 1'f64
                   z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
-
+                  
             if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
               output[row, col] = z / sumW
 
