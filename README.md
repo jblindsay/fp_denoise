@@ -12,6 +12,8 @@ Description
 - The user inputs the normal vector deviation angle threshold in degrees rather than a cosine angle.
 - The method for updating elevations differs from Sun's method.
 - The user may optional specify a weighting scheme for normal vector smoothing that uses either Sun's original method (ni . nj - T) or a simple thresholded mean filter (i.e. all neighbouring grid cells with normal vectors that deviate from the centre cell by less than the threshold are given equal weighting). This both increases the efficiency and the degree of smoothing.
+- There is an optional hillslope raster input that ensure there is no smoothing across channels and drainage divides.
+- There is an optional shaded relief raster output.
 
 These modifications generally result in more efficient denoising. The algorithm has been demonstrated to work well with fine-resolution LiDAR data. Note that the input DEM should be in a projected coordinate system (e.g. UTM) and in a [Whitebox GAT](http://www.uoguelph.ca/~hydrogeo/Whitebox/) or ArcGIS ASCII raster format.
 
@@ -27,22 +29,23 @@ After downloading the source code in the repository and installing the [Nim comp
 Usage
 -----
 
-| flag         | Description                                              |
-|--------------|----------------------------------------------------------|
-| --wd         |  Working directory; appended to input/output file names  |
-| -i, --input  |  Input DEM file name                                     |
-| -o, --output |  Output DEM file name                                    |
-| --threshold  |  Threshold value in degrees (1.0 - 85.0)                 |
-| --filter     |  Filter size for normal smoothing (odd value >3)         |
-| --iterations |  Number of iterations used for elevation updating        |
-| --hillshade  |  Optional output hillshade image file name               |
-| -m           |  If this flag is present, a simple mean filter is used   |
-| -h           |  Help                                                    |
+| flag                   | Description                                              |
+|------------------------|----------------------------------------------------------|
+| --wd                   |  Working directory; appended to input/output file names  |
+| -i, --input            |  Input DEM file name                                     |
+| -o, --output           |  Output DEM file name                                    |
+| --hillslope, --hs      |  Optional hillslope raster file name                     |
+| --threshold            |  Threshold value in degrees (1.0 - 85.0)                 |
+| --filter               |  Filter size for normal smoothing (odd value >3)         |
+| --iterations           |  Number of iterations used for elevation updating        |
+| --shaded_relief, --sr  |  Optional output hillshade image file name               |
+| -m                     |  If this flag is present, a simple mean filter is used   |
+| -h                     |  Help                                                    |
 
 Example usage at command line prompt (>>):
 
 ```
->> ./fp_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --threshold=20.0 --filter=5 --iterations=8 --hillshade=hs.dep
+>> ./fp_denoise --wd="/path/to/data/" -i="DEM file.dep" -o=output.dep --hs=hillslopes.dep --threshold=20.0 --filter=5 --iterations=8 --sr=shaded_relief.dep
 ```
 Here is a sample of the effect of running the tool on a fine-resolution LiDAR DEM:
 
