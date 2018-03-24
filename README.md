@@ -12,7 +12,7 @@ Description
 - The user inputs the normal vector deviation angle threshold in degrees rather than a cosine angle.
 - The method for updating elevations differs from Sun's method.
 - The user may optional specify a weighting scheme for normal vector smoothing that uses either Sun's original method (ni . nj - T) or a simple thresholded mean filter (i.e. all neighbouring grid cells with normal vectors that deviate from the centre cell by less than the threshold are given equal weighting). This both increases the efficiency and the degree of smoothing.
-- There is an optional hillslope raster input that ensure there is no smoothing across channels and drainage divides. A hillslope raster can be created using the *Hillslopes* tool in [**WhiteboxTools**](https://github.com/jblindsay/whitebox-geospatial-analysis-tools/tree/master/whitebox_tools) based on a D8 flow direction raster and a raster streams file (also derived using WhiteboxTools).
+- There is an optional hillslope raster input that ensure there is no smoothing across channels and drainage divides. A hillslope raster can be created using the *Hillslopes* tool in [*WhiteboxTools*](https://github.com/jblindsay/whitebox-geospatial-analysis-tools/tree/master/whitebox_tools) based on a D8 flow direction raster and a raster streams file (also derived using WhiteboxTools).
 - There is an optional shaded relief raster output.
 
 These modifications generally result in more efficient denoising. The algorithm has been demonstrated to work well with fine-resolution LiDAR data. Note that the input DEM should be in a projected coordinate system (e.g. UTM) and in a [Whitebox GAT](http://www.uoguelph.ca/~hydrogeo/Whitebox/) or ArcGIS ASCII raster format.
@@ -21,7 +21,7 @@ The general workflow of the method is divided into three components:
 
 1. A normal vector is calculated for each grid cell in the input DEM based on the eight neighbouring cells in the 3 x 3 neighbourhood.
 
-2. The normal vector field is smoothed using a low-pass filtering technique that preserves features, or breaks in slope, by excluding neighbours that have differences in normal vectors from the centre-cell vector by more than a user-specified threshold. The size of the convolution filter kernel is also specified by the user.
+2. The normal vector field is smoothed using a low-pass filtering technique that preserves features, or breaks in slope, by excluding neighbours that have differences in normal vectors from the centre-cell vector by more than a user-specified threshold. The size of the convolution filter kernel is also specified by the user. In addition to excluding neighbours with differences in normal vector angle larger than the specified threshold, if the optional hillslope image is input, then neighbours with hillslope ID values different from that of the centre cell will be excluded during the smoothing process. This ensures that smoothing does not occur across channels and drainage divides.
 
 3. The smoothed normal vector field is used to update the elevations in the output DEM using an iterative process.
 

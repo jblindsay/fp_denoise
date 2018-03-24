@@ -15,12 +15,12 @@ proc angleBetween(self, other: Normal): float64 {.inline.} =
   # Note that this is actually not the angle between the vectors but
   # rather the cosine of the angle between the vectors. This improves
   # the performance considerably. Also note that we do not need to worry
-  # about checking for division by zero here because 'c' will always be 
+  # about checking for division by zero here because 'c' will always be
   # non-zero and therefore the vector magnitude cannot be zero.
   let denom = ((self.a * self.a + self.b * self.b + self.c * self.c) *
               (other.a * other.a + other.b * other.b + other.c * other.c)).sqrt()
-  result = (self.a * other.a + self.b * other.b + self.c * other.c) / denom 
-  
+  result = (self.a * other.a + self.b * other.b + self.c * other.c) / denom
+
 when isMainModule:
   var
     workingDir = ""
@@ -186,7 +186,7 @@ Usage:
   echo("Reading input data...")
   let dem = newRasterFromFile(inputFile)
 
-  var output = createFromOther(outputFile, dem, copyData=true)
+  var output = createRasterFromOther(outputFile, dem, copyData=true)
 
   let t1 = cpuTime()
 
@@ -238,11 +238,11 @@ Usage:
       dx2.add(c - mid_point)
       dy2.add(r - mid_point)
 
-  
+
   # Note that there is a lot of duplicated code blocks below which
   # have resulted because of the two optional conditions of 1) using
   # a hillslope image in the criteria for using neighbours for smoothing
-  # normal vectors, and 2) using the simple mean weighting scheme or the 
+  # normal vectors, and 2) using the simple mean weighting scheme or the
   # original Sun method. There are ways of reducing this code duplication,
   # e.g. by using a closure to provide a hillslope value (see below), but
   # this duplication approach is used because it produces maximal efficiency.
@@ -253,13 +253,13 @@ Usage:
   #   let hillslope = newRasterFromFile(hillslopeFile)
   #   if dem.rows != hillslope.rows or dem.columns != hillslope.columns:
   #     raise newException(Exception, "Input DEM and hillslopes raster must have the same dimensions, i.e. rows and columns")
-  #   hillslopeProc = proc(row, col: int): float64 = hillslope[row, col] 
+  #   hillslopeProc = proc(row, col: int): float64 = hillslope[row, col]
 
   if useHillslope:
     let hillslope = newRasterFromFile(hillslopeFile)
     if dem.rows != hillslope.rows or dem.columns != hillslope.columns:
       raise newException(Exception, "Input DEM and hillslopes raster must have the same dimensions, i.e. rows and columns")
-    
+
     ################################
     # Calculate the normal vectors #
     ################################
@@ -283,13 +283,13 @@ Usage:
           a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
           b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
           nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
-          
+
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
         stdout.write("\rProgress: $1%".format(progress))
         stdout.flushFile()
         oldProgress = progress
-        
+
     if not simpleMeanFilter:
       # The following version of normal vector smoothing and elevation updates
       # uses Sun's original weighting scheme of (ni . nj - threshold)^2
@@ -359,7 +359,7 @@ Usage:
                     w = (diff - threshold)*(diff - threshold)
                     sumW += w
                     z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
-                    
+
               if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
                 output[row, col] = z / sumW
 
@@ -433,7 +433,7 @@ Usage:
                   if diff > threshold and hsn == hs:
                     sumW += 1'f64
                     z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
-                    
+
               if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
                 output[row, col] = z / sumW
 
@@ -462,13 +462,13 @@ Usage:
           a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
           b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
           nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
-          
+
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
         stdout.write("\rProgress: $1%".format(progress))
         stdout.flushFile()
         oldProgress = progress
-        
+
     if not simpleMeanFilter:
       # The following version of normal vector smoothing and elevation updates
       # uses Sun's original weighting scheme of (ni . nj - threshold)^2
@@ -534,7 +534,7 @@ Usage:
                     w = (diff - threshold)*(diff - threshold)
                     sumW += w
                     z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
-                    
+
               if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
                 output[row, col] = z / sumW
 
@@ -604,7 +604,7 @@ Usage:
                   if diff > threshold:
                     sumW += 1'f64
                     z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
-                    
+
               if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
                 output[row, col] = z / sumW
 
@@ -630,7 +630,7 @@ Usage:
     # Output the a hillshade (shaded relief) image #
     ################################################
     var
-      hillshadeRaster = createFromOther(shadedReliefFile, dem)
+      hillshadeRaster = createRasterFromOther(shadedReliefFile, dem)
       aspect, tanSlope, hillshade: float64
       fx, fy: float64
       term1: float64

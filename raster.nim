@@ -105,6 +105,58 @@ proc `[]`*(self: Raster, row, column: int): float64  {.inline.} =
   if row >= self.rows or column >= self.columns: return self.nodata
   result = self.values[row * self.columns + column]
 
+proc `+=`*(self: var Raster, other: Raster) {.inline.} =
+  if self.rows != other.rows or self.columns != other.columns:
+    raise newException(FileIOError, "Rasters must have the same dimensions")
+
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata and other.values[i] != other.nodata:
+        self.values[i] += other.values[i]
+
+proc `+=`*(self: var Raster, other: SomeNumber) {.inline.} =
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata:
+        self.values[i] += float64(other)
+
+proc `-=`*(self: var Raster, other: Raster) {.inline.} =
+  if self.rows != other.rows or self.columns != other.columns:
+    raise newException(FileIOError, "Rasters must have the same dimensions")
+
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata and other.values[i] != other.nodata:
+        self.values[i] -= other.values[i]
+
+proc `-=`*(self: var Raster, other: SomeNumber) {.inline.} =
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata:
+        self.values[i] -= float64(other)
+
+proc `*=`*(self: var Raster, other: Raster) {.inline.} =
+  if self.rows != other.rows or self.columns != other.columns:
+    raise newException(FileIOError, "Rasters must have the same dimensions")
+
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata and other.values[i] != other.nodata:
+        self.values[i] *= other.values[i]
+
+proc `*=`*(self: var Raster, other: SomeNumber) {.inline.} =
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata:
+        self.values[i] *= float64(other)
+
+proc `/=`*(self: var Raster, other: Raster) {.inline.} =
+  if self.rows != other.rows or self.columns != other.columns:
+    raise newException(FileIOError, "Rasters must have the same dimensions")
+
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata and other.values[i] != other.nodata:
+        self.values[i] /= other.values[i]
+
+proc `/=`*(self: var Raster, other: SomeNumber) {.inline.} =
+  for i in 0..<self.rows*self.columns:
+      if self.values[i] != self.nodata:
+        self.values[i] /= float64(other)
+
 proc readWhiteboxRaster*(self: var Raster) =
   self.metadata = newSeq[string]()
 
@@ -442,7 +494,7 @@ proc newRasterFromFile*(filename: string): Raster =
 
   result.read()
 
-proc createFromOther*(filename: string,
+proc createRasterFromOther*(filename: string,
                     other: Raster,
                     dataType = DataType.none,
                     nodata=NegInf,
