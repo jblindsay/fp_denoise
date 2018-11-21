@@ -26,8 +26,6 @@ when isMainModule:
     workingDir = ""
     inputFile = ""
     outputFile = ""
-    hillslopeFile = ""
-    useHillslope = false
     shadedReliefFile = ""
     createShadedRelief = false
     threshold = 15'f64
@@ -56,12 +54,6 @@ when isMainModule:
           outputFile = arguments[i+1]
         elif arg.toLowerAscii.startsWith("-o=") or arg.toLowerAscii.startsWith("-output="):
           outputFile = arg.split("=")[1]
-        elif arg.toLowerAscii == "-hs" or arg.toLowerAscii == "-hillslope":
-          hillslopeFile = arguments[i+1]
-          useHillslope = true
-        elif arg.toLowerAscii.startsWith("-hs=") or arg.toLowerAscii.startsWith("-hillslope="):
-          hillslopeFile = arg.split("=")[1]
-          useHillslope = true
         elif arg.toLowerAscii == "-threshold":
           threshold = parseFloat(arguments[i+1].strip)
         elif arg.toLowerAscii.startsWith "-threshold=":
@@ -91,7 +83,6 @@ Usage:
 --wd                    Working directory; appended to input/output file names
 -i, --input             Input DEM file name
 -o, --output            Output DEM file name
---hillslope, --hs       Input hillslope file name
 --threshold             Threshold value in degrees (1.0 - 85.0)
 --filter                Filter size for normal smoothing (odd value >3)
 --iterations            Number of iterations used for elevation updating
@@ -113,8 +104,8 @@ Usage:
     stdout.write("Output DEM file (with extension): ")
     outputFile = readLine(stdin)
 
-    stdout.write("Input hillslope file (with extension): ")
-    hillslopeFile = readLine(stdin)
+    # stdout.write("Input hillslope file (with extension): ")
+    # hillslopeFile = readLine(stdin)
 
     stdout.write("Output shaded relief file (with extension): ")
     shadedReliefFile = readLine(stdin)
@@ -147,12 +138,6 @@ Usage:
 
   if not (outputFile.endsWith(".dep") or outputFile.endsWith(".asc")):
     outputFile.add(".dep")
-
-  if not hillslopeFile.contains(DirSep):
-    hillslopeFile = workingDir & hillslopeFile
-
-  if not (hillslopeFile.endsWith(".dep") or hillslopeFile.endsWith(".asc")):
-    hillslopeFile.add(".dep")
 
   if not shadedReliefFile.contains(DirSep):
     shadedReliefFile = workingDir & shadedReliefFile
@@ -215,8 +200,6 @@ Usage:
     xn: int
     yn: int
     zn: float64
-    hs: float64
-    hsn: float64
     a, b, c: float64
     progress: int
     oldProgress: int = 1
@@ -240,49 +223,76 @@ Usage:
 
 
   # Note that there is a lot of duplicated code blocks below which
-  # have resulted because of the two optional conditions of 1) using
-  # a hillslope image in the criteria for using neighbours for smoothing
-  # normal vectors, and 2) using the simple mean weighting scheme or the
-  # original Sun method. There are ways of reducing this code duplication,
-  # e.g. by using a closure to provide a hillslope value (see below), but
-  # this duplication approach is used because it produces maximal efficiency.
-  # It isn't particularly pretty though.
+  # have resulted because of the option to use the simple mean weighting
+  # scheme or the original Sun method. There are ways of reducing this code
+  # duplication,  e.g. by using a closure to provide a hillslope value (see
+  # below), but this duplication approach is used because it produces maximal
+  # efficiency.
 
-  # let hillslopeProc = proc(row, col: int): float64 = 0'f64 # use a constant
-  # if useHillslope:
-  #   let hillslope = newRasterFromFile(hillslopeFile)
-  #   if dem.rows != hillslope.rows or dem.columns != hillslope.columns:
-  #     raise newException(Exception, "Input DEM and hillslopes raster must have the same dimensions, i.e. rows and columns")
-  #   hillslopeProc = proc(row, col: int): float64 = hillslope[row, col]
 
-  if useHillslope:
-    let hillslope = newRasterFromFile(hillslopeFile)
-    if dem.rows != hillslope.rows or dem.columns != hillslope.columns:
-      raise newException(Exception, "Input DEM and hillslopes raster must have the same dimensions, i.e. rows and columns")
+  ################################
+  # Calculate the normal vectors #
+  ################################
+  echo "Calculating normal vectors..."
+  for row in 0..<dem.rows:
+    for col in 0..<dem.columns:
+      z = dem[row, col]
+      if z != dem.nodata:
+        for n in 0..7:
+          zn = dem[row + dy[n], col + dx[n]]
+          if zn != dem.nodata:
+            # if (zn - z).abs() > maxZDiff[n]:
+            #     # This indicates a very steep inter-cell slope.
+            #     # Don't use this neighbouring cell value to
+            #     # calculate the vector.
+            #     zn = z
+            values[n] = zn
+          else:
+            values[n] = z
 
-    ################################
-    # Calculate the normal vectors #
-    ################################
-    echo "Calculating normal vectors..."
+        a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
+        b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
+        nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
+
+    progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
+    if progress != oldProgress:
+      stdout.write("\rProgress: $1%".format(progress))
+      stdout.flushFile()
+      oldProgress = progress
+
+  if not simpleMeanFilter:
+    # The following version of normal vector smoothing and elevation updates
+    # uses Sun's original weighting scheme of (ni . nj - threshold)^2
+
+    ##################################
+    # smooth the normal vector field #
+    ##################################
+    echo ""
+    echo "Smoothing the normal vectors..."
     for row in 0..<dem.rows:
       for col in 0..<dem.columns:
         z = dem[row, col]
         if z != dem.nodata:
-          for n in 0..7:
-            zn = dem[row + dy[n], col + dx[n]]
-            if zn != dem.nodata:
-              # if (zn - z).abs() > maxZDiff[n]:
-              #     # This indicates a very steep inter-cell slope.
-              #     # Don't use this neighbouring cell value to
-              #     # calculate the vector.
-              #     zn = z
-              values[n] = zn
-            else:
-              values[n] = z
+          sumW = 0'f64
+          a = 0'f64
+          b = 0'f64
+          c = 0'f64
+          for n in 0..<numNeighbours:
+            xn = col + dx2[n]
+            yn = row + dy2[n]
+            if dem[yn, xn] != dem.nodata:
+              diff = nv[row, col].angleBetween(nv[yn, xn])
+              if diff > threshold:
+                w = (diff - threshold)*(diff - threshold)
+                sumW += w
+                a += nv[yn, xn].a * w
+                b += nv[yn, xn].b * w
+                c += nv[yn, xn].c * w
 
-          a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
-          b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
-          nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
+          a /= sumW
+          b /= sumW
+          c /= sumW
+          nvSmooth[row, col] = Normal(a: a, b: b, c: c)
 
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
@@ -290,178 +300,69 @@ Usage:
         stdout.flushFile()
         oldProgress = progress
 
-    if not simpleMeanFilter:
-      # The following version of normal vector smoothing and elevation updates
-      # uses Sun's original weighting scheme of (ni . nj - threshold)^2
+    echo ""
 
-      ##################################
-      # smooth the normal vector field #
-      ##################################
-      echo ""
-      echo "Smoothing the normal vectors..."
+    #########################################################################
+    # Update the elevations of the DEM based on the smoothed normal vectors #
+    #########################################################################
+    echo "Updating elevations..."
+    for i in 1..iterations:
+      echo "Iteration $1 of $2...".format(i, iterations)
+
       for row in 0..<dem.rows:
         for col in 0..<dem.columns:
-          z = dem[row, col]
-          if z != dem.nodata:
-            hs = hillslope[row, col]
+          z = output[row, col]
+          if z != output.nodata:
             sumW = 0'f64
-            a = 0'f64
-            b = 0'f64
-            c = 0'f64
-            for n in 0..<numNeighbours:
-              xn = col + dx2[n]
-              yn = row + dy2[n]
-              if dem[yn, xn] != dem.nodata:
-                diff = nv[row, col].angleBetween(nv[yn, xn])
-                hsn = hillslope[yn, xn]
-                if diff > threshold and hsn == hs:
+            z = 0'f64
+            for n in 0..7:
+              xn = col + dx[n]
+              yn = row + dy[n]
+              zn = output[yn, xn]
+              if zn != output.nodata:
+                diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
+                if diff > threshold:
                   w = (diff - threshold)*(diff - threshold)
                   sumW += w
-                  a += nv[yn, xn].a * w
-                  b += nv[yn, xn].b * w
-                  c += nv[yn, xn].c * w
+                  z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
 
-            a /= sumW
-            b /= sumW
-            c /= sumW
-            nvSmooth[row, col] = Normal(a: a, b: b, c: c)
+            if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
+              output[row, col] = z / sumW
 
-        progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
-        if progress != oldProgress:
-          stdout.write("\rProgress: $1%".format(progress))
-          stdout.flushFile()
-          oldProgress = progress
+  else:
+    # The following version of normal vector smoothing and elevation updates
+    # uses a simple mean filter for all neighbours with differences in normal
+    # vectors less than the threshold. This is more efficient than the Sun
+    # normal smoothing scheme and provides a smoother surface.
 
-      echo ""
-
-      #########################################################################
-      # Update the elevations of the DEM based on the smoothed normal vectors #
-      #########################################################################
-      echo "Updating elevations..."
-      for i in 1..iterations:
-        echo "Iteration $1 of $2...".format(i, iterations)
-
-        for row in 0..<dem.rows:
-          for col in 0..<dem.columns:
-            z = output[row, col]
-            if z != output.nodata:
-              hs = hillslope[row, col]
-              sumW = 0'f64
-              z = 0'f64
-              for n in 0..7:
-                xn = col + dx[n]
-                yn = row + dy[n]
-                zn = output[yn, xn]
-                if zn != output.nodata:
-                  diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
-                  hsn = hillslope[yn, xn]
-                  if diff > threshold and hsn == hs:
-                    w = (diff - threshold)*(diff - threshold)
-                    sumW += w
-                    z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
-
-              if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
-                output[row, col] = z / sumW
-
-    else:
-      # The following version of normal vector smoothing and elevation updates
-      # uses a simple mean filter for all neighbours with differences in normal
-      # vectors less than the threshold. This is more efficient than the Sun
-      # normal smoothing scheme and provides a smoother surface.
-
-      ##################################
-      # smooth the normal vector field #
-      ##################################
-      echo ""
-      echo "Smoothing the normal vectors..."
-      for row in 0..<dem.rows:
-        for col in 0..<dem.columns:
-          z = dem[row, col]
-          if z != dem.nodata:
-            hs = hillslope[row, col]
-            sumW = 0'f64
-            a = 0'f64
-            b = 0'f64
-            c = 0'f64
-            for n in 0..<numNeighbours:
-              xn = col + dx2[n]
-              yn = row + dy2[n]
-              if dem[yn, xn] != dem.nodata:
-                diff = nv[row, col].angleBetween(nv[yn, xn])
-                hsn = hillslope[yn, xn]
-                if diff > threshold and hsn == hs:
-                  sumW += 1'f64
-                  a += nv[yn, xn].a
-                  b += nv[yn, xn].b
-                  c += nv[yn, xn].c
-
-            a /= sumW
-            b /= sumW
-            c /= sumW
-            nvSmooth[row, col] = Normal(a: a, b: b, c: c)
-
-        progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
-        if progress != oldProgress:
-          stdout.write("\rProgress: $1%".format(progress))
-          stdout.flushFile()
-          oldProgress = progress
-
-      echo ""
-
-      #########################################################################
-      # Update the elevations of the DEM based on the smoothed normal vectors #
-      #########################################################################
-      echo "Updating elevations..."
-
-      for i in 1..iterations:
-        echo "Iteration $1 of $2...".format(i, iterations)
-
-        for row in 0..<dem.rows:
-          for col in 0..<dem.columns:
-            z = output[row, col]
-            if z != output.nodata:
-              hs = hillslope[row, col]
-              sumW = 0'f64
-              z = 0'f64
-              for n in 0..7:
-                xn = col + dx[n]
-                yn = row + dy[n]
-                zn = output[yn, xn]
-                if zn != output.nodata:
-                  diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
-                  hsn = hillslope[yn, xn]
-                  if diff > threshold and hsn == hs:
-                    sumW += 1'f64
-                    z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
-
-              if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
-                output[row, col] = z / sumW
-
-  else: # no hillslope image specified
-
-    ################################
-    # Calculate the normal vectors #
-    ################################
-    echo "Calculating normal vectors..."
+    ##################################
+    # smooth the normal vector field #
+    ##################################
+    echo ""
+    echo "Smoothing the normal vectors..."
     for row in 0..<dem.rows:
       for col in 0..<dem.columns:
         z = dem[row, col]
         if z != dem.nodata:
-          for n in 0..7:
-            zn = dem[row + dy[n], col + dx[n]]
-            if zn != dem.nodata:
-              # if (zn - z).abs() > maxZDiff[n]:
-              #     # This indicates a very steep inter-cell slope.
-              #     # Don't use this neighbouring cell value to
-              #     # calculate the vector.
-              #     zn = z
-              values[n] = zn
-            else:
-              values[n] = z
+          sumW = 0'f64
+          a = 0'f64
+          b = 0'f64
+          c = 0'f64
+          for n in 0..<numNeighbours:
+            xn = col + dx2[n]
+            yn = row + dy2[n]
+            if dem[yn, xn] != dem.nodata:
+              diff = nv[row, col].angleBetween(nv[yn, xn])
+              if diff > threshold:
+                sumW += 1'f64
+                a += nv[yn, xn].a
+                b += nv[yn, xn].b
+                c += nv[yn, xn].c
 
-          a = -(values[2] - values[4] + 2'f64 * (values[1] - values[5]) + values[0] - values[6])
-          b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
-          nv[row, col] = Normal(a: a, b: b, c: eightGridRes)
+          a /= sumW
+          b /= sumW
+          c /= sumW
+          nvSmooth[row, col] = Normal(a: a, b: b, c: c)
 
       progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
       if progress != oldProgress:
@@ -469,144 +370,34 @@ Usage:
         stdout.flushFile()
         oldProgress = progress
 
-    if not simpleMeanFilter:
-      # The following version of normal vector smoothing and elevation updates
-      # uses Sun's original weighting scheme of (ni . nj - threshold)^2
+    echo ""
 
-      ##################################
-      # smooth the normal vector field #
-      ##################################
-      echo ""
-      echo "Smoothing the normal vectors..."
+    #########################################################################
+    # Update the elevations of the DEM based on the smoothed normal vectors #
+    #########################################################################
+    echo "Updating elevations..."
+
+    for i in 1..iterations:
+      echo "Iteration $1 of $2...".format(i, iterations)
+
       for row in 0..<dem.rows:
         for col in 0..<dem.columns:
-          z = dem[row, col]
-          if z != dem.nodata:
+          z = output[row, col]
+          if z != output.nodata:
             sumW = 0'f64
-            a = 0'f64
-            b = 0'f64
-            c = 0'f64
-            for n in 0..<numNeighbours:
-              xn = col + dx2[n]
-              yn = row + dy2[n]
-              if dem[yn, xn] != dem.nodata:
-                diff = nv[row, col].angleBetween(nv[yn, xn])
-                if diff > threshold:
-                  w = (diff - threshold)*(diff - threshold)
-                  sumW += w
-                  a += nv[yn, xn].a * w
-                  b += nv[yn, xn].b * w
-                  c += nv[yn, xn].c * w
-
-            a /= sumW
-            b /= sumW
-            c /= sumW
-            nvSmooth[row, col] = Normal(a: a, b: b, c: c)
-
-        progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
-        if progress != oldProgress:
-          stdout.write("\rProgress: $1%".format(progress))
-          stdout.flushFile()
-          oldProgress = progress
-
-      echo ""
-
-      #########################################################################
-      # Update the elevations of the DEM based on the smoothed normal vectors #
-      #########################################################################
-      echo "Updating elevations..."
-      for i in 1..iterations:
-        echo "Iteration $1 of $2...".format(i, iterations)
-
-        for row in 0..<dem.rows:
-          for col in 0..<dem.columns:
-            z = output[row, col]
-            if z != output.nodata:
-              sumW = 0'f64
-              z = 0'f64
-              for n in 0..7:
-                xn = col + dx[n]
-                yn = row + dy[n]
-                zn = output[yn, xn]
-                if zn != output.nodata:
-                  diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
-                  if diff > threshold:
-                    w = (diff - threshold)*(diff - threshold)
-                    sumW += w
-                    z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c * w
-
-              if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
-                output[row, col] = z / sumW
-
-    else:
-      # The following version of normal vector smoothing and elevation updates
-      # uses a simple mean filter for all neighbours with differences in normal
-      # vectors less than the threshold. This is more efficient than the Sun
-      # normal smoothing scheme and provides a smoother surface.
-
-      ##################################
-      # smooth the normal vector field #
-      ##################################
-      echo ""
-      echo "Smoothing the normal vectors..."
-      for row in 0..<dem.rows:
-        for col in 0..<dem.columns:
-          z = dem[row, col]
-          if z != dem.nodata:
-            sumW = 0'f64
-            a = 0'f64
-            b = 0'f64
-            c = 0'f64
-            for n in 0..<numNeighbours:
-              xn = col + dx2[n]
-              yn = row + dy2[n]
-              if dem[yn, xn] != dem.nodata:
-                diff = nv[row, col].angleBetween(nv[yn, xn])
+            z = 0'f64
+            for n in 0..7:
+              xn = col + dx[n]
+              yn = row + dy[n]
+              zn = output[yn, xn]
+              if zn != output.nodata:
+                diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
                 if diff > threshold:
                   sumW += 1'f64
-                  a += nv[yn, xn].a
-                  b += nv[yn, xn].b
-                  c += nv[yn, xn].c
+                  z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
 
-            a /= sumW
-            b /= sumW
-            c /= sumW
-            nvSmooth[row, col] = Normal(a: a, b: b, c: c)
-
-        progress = int(100'f32 * float32(row)/float32(dem.rows - 1))
-        if progress != oldProgress:
-          stdout.write("\rProgress: $1%".format(progress))
-          stdout.flushFile()
-          oldProgress = progress
-
-      echo ""
-
-      #########################################################################
-      # Update the elevations of the DEM based on the smoothed normal vectors #
-      #########################################################################
-      echo "Updating elevations..."
-
-      for i in 1..iterations:
-        echo "Iteration $1 of $2...".format(i, iterations)
-
-        for row in 0..<dem.rows:
-          for col in 0..<dem.columns:
-            z = output[row, col]
-            if z != output.nodata:
-              sumW = 0'f64
-              z = 0'f64
-              for n in 0..7:
-                xn = col + dx[n]
-                yn = row + dy[n]
-                zn = output[yn, xn]
-                if zn != output.nodata:
-                  diff = nvSmooth[row, col].angleBetween(nvSmooth[yn, xn])
-                  if diff > threshold:
-                    sumW += 1'f64
-                    z += -(nvSmooth[yn, xn].a * x[n] + nvSmooth[yn, xn].b * y[n] - nvSmooth[yn, xn].c * zn) / nvSmooth[yn, xn].c
-
-              if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
-                output[row, col] = z / sumW
+            if sumW > 0'f64: # this is a division-by-zero safeguard and must be in place.
+              output[row, col] = z / sumW
 
 
   let t2 = cpuTime()
@@ -661,6 +452,8 @@ Usage:
           b = -(values[6] - values[4] + 2'f64 * (values[7] - values[3]) + values[0] - values[2])
           fx = -a / eightGridRes
           fy = -b / eightGridRes
+          # fx = -nvSmooth[row, col].a / nvSmooth[row, col].c
+          # fy = -nvSmooth[row, col].b / nvSmooth[row, col].c
           if fx != 0'f64:
             tanSlope = (fx * fx + fy * fy).sqrt()
             aspect = (180'f64 - ((fy / fx).arctan()).radToDeg() + 90'f64 * (fx / (fx).abs())).degToRad()
