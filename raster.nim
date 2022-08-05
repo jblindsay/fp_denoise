@@ -401,9 +401,8 @@ proc readArcAscii(self: var Raster) =
           self.values = newSeq[float64](self.rows * self.columns)
 
         for val in lineSplit:
-          if not val.isNilOrWhitespace():
-            self.values[index] = parseFloat(val.strip)
-            index += 1
+          self.values[index] = parseFloat(val.strip)
+          index += 1
 
     # set the North, East, South, and West coodinates
     if xllcorner.classify != fcNegInf:

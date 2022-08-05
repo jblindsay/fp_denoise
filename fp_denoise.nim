@@ -41,41 +41,40 @@ when isMainModule:
     var arg: string
     for i in 0..<arguments.len:
       arg = arguments[i].strip.replace("--", "-")
-      if not arg.isNilOrWhitespace:
-        if arg.toLowerAscii == "-wd":
-          workingDir = arguments[i+1]
-        elif arg.toLowerAscii.startsWith "-wd=":
-          workingDir = arg.split("=")[1]
-        elif arg.toLowerAscii == "-i" or arg.toLowerAscii == "-input":
-          inputFile = arguments[i+1]
-        elif arg.toLowerAscii.startsWith("-i=") or arg.toLowerAscii.startsWith("-input="):
-          inputFile = arg.split("=")[1]
-        elif arg.toLowerAscii == "-o" or arg.toLowerAscii == "-output":
-          outputFile = arguments[i+1]
-        elif arg.toLowerAscii.startsWith("-o=") or arg.toLowerAscii.startsWith("-output="):
-          outputFile = arg.split("=")[1]
-        elif arg.toLowerAscii == "-threshold":
-          threshold = parseFloat(arguments[i+1].strip)
-        elif arg.toLowerAscii.startsWith "-threshold=":
-          threshold = parseFloat(arg.split("=")[1].strip)
-        elif arg.toLowerAscii == "-filter":
-          filterSize = parseInt(arguments[i+1].strip)
-        elif arg.toLowerAscii.startsWith "-filter=":
-          filterSize = parseInt(arg.split("=")[1].strip)
-        elif arg.toLowerAscii == "-iterations":
-          iterations = parseInt(arguments[i+1].strip)
-        elif arg.toLowerAscii.startsWith "-iterations=":
-          iterations = parseInt(arg.split("=")[1].strip)
-        elif arg.toLowerAscii == "-shaded_relief" or arg.toLowerAscii == "-sr":
-          shadedReliefFile = arguments[i+1].strip
-          createShadedRelief = true
-        elif arg.toLowerAscii.startsWith("-shaded_relief=") or arg.toLowerAscii.startsWith("-sr="):
-          shadedReliefFile = arg.split("=")[1].strip
-          createShadedRelief = true
-        elif arg.toLowerAscii == "-m":
-          simpleMeanFilter = true
-        elif arg.toLowerAscii.contains("-h"):
-          echo """
+      if arg.toLowerAscii == "-wd":
+        workingDir = arguments[i+1]
+      elif arg.toLowerAscii.startsWith "-wd=":
+        workingDir = arg.split("=")[1]
+      elif arg.toLowerAscii == "-i" or arg.toLowerAscii == "-input":
+        inputFile = arguments[i+1]
+      elif arg.toLowerAscii.startsWith("-i=") or arg.toLowerAscii.startsWith("-input="):
+        inputFile = arg.split("=")[1]
+      elif arg.toLowerAscii == "-o" or arg.toLowerAscii == "-output":
+        outputFile = arguments[i+1]
+      elif arg.toLowerAscii.startsWith("-o=") or arg.toLowerAscii.startsWith("-output="):
+        outputFile = arg.split("=")[1]
+      elif arg.toLowerAscii == "-threshold":
+        threshold = parseFloat(arguments[i+1].strip)
+      elif arg.toLowerAscii.startsWith "-threshold=":
+        threshold = parseFloat(arg.split("=")[1].strip)
+      elif arg.toLowerAscii == "-filter":
+        filterSize = parseInt(arguments[i+1].strip)
+      elif arg.toLowerAscii.startsWith "-filter=":
+        filterSize = parseInt(arg.split("=")[1].strip)
+      elif arg.toLowerAscii == "-iterations":
+        iterations = parseInt(arguments[i+1].strip)
+      elif arg.toLowerAscii.startsWith "-iterations=":
+        iterations = parseInt(arg.split("=")[1].strip)
+      elif arg.toLowerAscii == "-shaded_relief" or arg.toLowerAscii == "-sr":
+        shadedReliefFile = arguments[i+1].strip
+        createShadedRelief = true
+      elif arg.toLowerAscii.startsWith("-shaded_relief=") or arg.toLowerAscii.startsWith("-sr="):
+        shadedReliefFile = arg.split("=")[1].strip
+        createShadedRelief = true
+      elif arg.toLowerAscii == "-m":
+        simpleMeanFilter = true
+      elif arg.toLowerAscii.contains("-h"):
+        echo """
 fp_denoise:
 This tool performs feature-preserving de-noising on a raster digital elevation model (DEM).
 
@@ -89,8 +88,8 @@ Usage:
 --shaded_relief, --sr   Optional output hillshade image file name
 -m                      If this flag is present, a simple mean filter is used
 -h                      Help
-          """
-          quit(QuitSuccess)
+        """
+        quit(QuitSuccess)
 
   else:
     # No arguments have been supplied, so ask the user for input.
